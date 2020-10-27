@@ -12,9 +12,9 @@ RUN npm install
 # copy code of application
 COPY --chown=node:node . .
 
-# remove env files
-RUN rm .env*
+# Build
+RUN npm run build
 
 # start application
 EXPOSE 3000
-CMD [ "node", "src/app.js" ]
+CMD [ "node", "dist/app.bundle.js" ]
