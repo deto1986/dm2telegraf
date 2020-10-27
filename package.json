@@ -1,7 +1,7 @@
 {
-  "name": "dm-toiletpaper",
+  "name": "dm2telegraf",
   "version": "1.0.0",
-  "description": "",
+  "description": "Wrapper for influx telegraf of DM product stock data for certain DM stores",
   "main": "src/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
