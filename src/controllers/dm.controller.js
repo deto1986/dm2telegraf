@@ -8,7 +8,6 @@ const axios = require("axios").default;
  */
 exports.getList = (req, res) => {
     // get all stores around BRUCHSAL
-    var aStores = [];
     Promise.all([
         axios.get(process.env.DM4TELEGRAF_STORE_LOOKUP_BRUCHSAL),
         axios.get(process.env.DM4TELEGRAF_STORE_LOOKUP_KARLSRUHE)
@@ -24,7 +23,9 @@ exports.getList = (req, res) => {
                         sAddress = oStore.address.street + " / " + oStore.address.zip + " " + oStore.address.city;
                     
                     // fetch stock of product and add store to list
-                    let iStockToiletpaper = await getStockOfToiletpaper(sStoreId);
+                    let iStockToiletpaper = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_TOILETPAPER);
+                    let iStockMNS = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_MNS);
+                    let iStockFFP2 = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_FFP2);
                     aStores.push({
                         "id": sStoreId,
                         "street": oStore.address.street,
@@ -33,7 +34,9 @@ exports.getList = (req, res) => {
                         "address": sAddress,
                         "geo_lat": oStore.location.lat,
                         "geo_lon": oStore.location.lon,
-                        "stock_toiletpaper": iStockToiletpaper
+                        "stock_toiletpaper": iStockToiletpaper,
+                        "stock_mns": iStockMNS,
+                        "stock_ffp2": iStockFFP2
                     });
                 };
             };
@@ -58,11 +61,10 @@ function compareStoreIds(a, b) {
     return 0;
 }
 
-function getStockOfToiletpaper(sStoreId) {
+function getStockOfProducts(sStoreId, sProductIds) {
     return new Promise((resolve, reject) => {
         let iStock = 0,
-            url = process.env.DM4TELEGRAF_URL_PRODUCT_STOCK_PER_STORE,
-            sProductIds = process.env.DM4TELEGRAF_URL_PRODUCT_IDS_TOILETPAPER;
+            url = process.env.DM4TELEGRAF_URL_PRODUCT_STOCK_PER_STORE;
         
         // replace placeholders
         url = url.replace("${product_ids}", sProductIds);
