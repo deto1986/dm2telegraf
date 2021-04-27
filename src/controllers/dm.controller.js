@@ -7,11 +7,15 @@ const axios = require("axios").default;
  * @param {ServerResponse} res HTTP response
  */
 exports.getList = (req, res) => {
+    const aCoords = process.env.DM4TELEGRAF_STORE_LOOKUP_COORDS.split(",");
+    let aStoreLookups = [];
+    aCoords.forEach(function(sCoord) {
+        let url = process.env.DM4TELEGRAF_STORE_LOOKUP_URL;
+        aStoreLookups.push(axios.get(url.replace("${coords}", sCoord)));
+    })
+
     // get all stores around BRUCHSAL
-    Promise.all([
-        axios.get(process.env.DM4TELEGRAF_STORE_LOOKUP_BRUCHSAL),
-        axios.get(process.env.DM4TELEGRAF_STORE_LOOKUP_KARLSRUHE)
-    ])
+    Promise.all(aStoreLookups)
         .then(async (result) => {
             var aStores = [];
             for(let r in result) {
@@ -21,23 +25,25 @@ exports.getList = (req, res) => {
                     let oStore = result[r].data.stores[s],
                         sStoreId = oStore.storeNumber,
                         sAddress = oStore.address.street + " / " + oStore.address.zip + " " + oStore.address.city;
-                    
-                    // fetch stock of product and add store to list
-                    let iStockToiletpaper = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_TOILETPAPER);
-                    let iStockMNS = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_MNS);
-                    let iStockFFP2 = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_FFP2);
-                    aStores.push({
-                        "id": sStoreId,
-                        "street": oStore.address.street,
-                        "zip": oStore.address.zip,
-                        "city": oStore.address.city,
-                        "address": sAddress,
-                        "geo_lat": oStore.location.lat,
-                        "geo_lon": oStore.location.lon,
-                        "stock_toiletpaper": iStockToiletpaper,
-                        "stock_mns": iStockMNS,
-                        "stock_ffp2": iStockFFP2
-                    });
+
+                    if(aStores.filter(store => store.id === sStoreId).length === 0) {
+                        // fetch stock of product and add store to list
+                        let iStockToiletpaper = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_TOILETPAPER);
+                        let iStockMNS = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_MNS);
+                        let iStockFFP2 = await getStockOfProducts(sStoreId, process.env.DM4TELEGRAF_URL_PRODUCT_IDS_FFP2);
+                        aStores.push({
+                            "id": sStoreId,
+                            "street": oStore.address.street,
+                            "zip": oStore.address.zip,
+                            "city": oStore.address.city,
+                            "address": sAddress,
+                            "geo_lat": oStore.location.lat,
+                            "geo_lon": oStore.location.lon,
+                            "stock_toiletpaper": iStockToiletpaper,
+                            "stock_mns": iStockMNS,
+                            "stock_ffp2": iStockFFP2
+                        });
+                    }
                 };
             };
             aStores.sort(compareStoreIds);
@@ -74,7 +80,9 @@ function getStockOfProducts(sStoreId, sProductIds) {
         axios.get(url).then((resStock) => {
             // sum up stock of toiletpaper
             for (let i in resStock.data.storeAvailabilities) {
-                iStock += resStock.data.storeAvailabilities[i][0].stockLevel;
+                if(resStock.data.storeAvailabilities[i][0].inStock) {
+                    iStock += resStock.data.storeAvailabilities[i][0].stockLevel;
+                }
             }
 
             // end promise
